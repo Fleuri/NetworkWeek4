@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <sys/time.h>
  
 int readLinee(int fd, char* buf, int maxlen) {
     char c;
@@ -26,7 +27,8 @@ int readLinee(int fd, char* buf, int maxlen) {
     }
     return i;
 }
- 
+
+
  
 /*
  *
@@ -40,6 +42,9 @@ int main(int argc, char** argv) {
     int n;
     int readLength = atoi(argv[1]);
     char buffer[255];
+    struct timeval start, end;
+    int timestarted = 0;
+
     sockfd = socket(PF_INET, SOCK_STREAM, PF_UNSPEC);
     if (sockfd < 0) {
         perror("Errror creating stream socket");
@@ -71,15 +76,19 @@ int main(int argc, char** argv) {
         if ( (childpid = fork()) < 0)
             perror("Can't fork");
         else if (childpid == 0) { /* child process */
+        gettimeofday(&start, NULL);
             close(sockfd); /* close original socket */
             printf("waiting for the client to send text:\n");
             while ((n = read(newsockfd, buffer, readLength)) > 0) {
                 write(STDOUT_FILENO, buffer, n);
                 write(STDOUT_FILENO, "\n", 1);
             }
+            gettimeofday(&end, NULL);
+            printf("Time elapsed: %ld\n", (end.tv_sec*1000 + end.tv_usec)-(end.tv_sec*1000+start.tv_usec));
             exit(0);
         }
         close(newsockfd); /* parent process */
     }
     return (EXIT_SUCCESS);
 }
+
