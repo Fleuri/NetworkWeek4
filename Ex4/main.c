@@ -1,64 +1,70 @@
-/* inet.h
-* Definitions for TCP and UDP client/server programs.
-*/
 #include <stdio.h>
-#include <sys/types.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
-#define MAXLINE 512
-#define SERV_UDP_PORT 51012
-#define SERV_TCP_PORT 51012
-/* host addr for server*/
-#define SERV_HOST_ADDR "128.214.9.98" /* melkki.cs.helsinki.fi */
-
-void my_err(char *sptr)
-{
-perror(sptr);
-exit(1);
+#include <unistd.h>
+#include <string.h>
+#include <sys/time.h>
+#include <netdb.h>
+#include <sys/types.h>
+#define MIN(a,b) (((a)<(b))?(a):(b))
+ 
+ 
+int readLinee(int fd, char* buf, int maxlen) {
+    char c;
+    ssize_t count;
+    int i;
+    for (i = 0; i < maxlen; i++) {
+        count = read(fd, &c, 1);
+        if (count < 0) {
+            perror("read < 0\n");
+            exit(1);
+        } else if (count == 0) {
+            break;
+        }
+        if (c == '\n') {
+            break;
+        }
+        buf[i] = c;
+    }
+    return i;
 }
-
-
-
-void dg_cli(FILE *fp, int sockfd, const struct sockaddr *pservaddr, int servlen) {
-int n;
-char sendline[MAXLINE], recvline[MAXLINE + 1];
-
-    while (fgets(sendline, MAXLINE, fp) != NULL) {
-            n = strlen(sendline);
-            if (sendto(sockfd, sendline, n, 0, pservaddr, servlen) !=n)
-                    my_err(“dg_cli:sendto error on socket”);
-            n = recvfrom(sockfd, recvline, MAXLINE, 0, NULL, NULL);
-            if (n<0) my_err(“dg_cli: recvfrom error”);
-                    recvline[n] = 0; /* null terminate */
-            fputs(recvline, stdout);
-    }
-    if (ferror(fp)) my_err(“dg_cli:error reading file”);
-    }
-
+ 
 /*
- * 
+ *
  */
 int main(int argc, char** argv) {
+    int sockfd,n, len;
+    struct sockaddr_in servaddr,cliaddr;
+    char sendline[1000];
+    char recvline[1000];
+    int dataLength = atoi(argv[2]);
+    int blockLength = atoi(argv[3]);
+    struct addrinfo *result;
+ 
+    if (argc != 2)
+    {
+       printf("usage:  client <IP address>\n");
+       exit(1);
+    }
 
-        int sockfd;
-        struct sockaddr_in servaddr;
-        if (argc != 2) {
-                fprintf(stderr, "usage: udpcli <IPaddress>\n"); exit(1);
-        }
-       
-        bzero( (void *) &servaddr, sizeof(servaddr));
-        servaddr.sin_family = AF_INET;
-        servaddr.sin_port = htons(SERV_UDP_PORT);
-        if ( inet_aton(argv[1], &servaddr.sin_addr) == 0) {
-                fprinf(stderr, "udpcli: invalid IP address %s\n", argv[1]);
-                exit(1);
-        }
-        if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0) ) < 0)
-                my_err(udpcli:socket error”) ;
-        dg_cli(stdin, sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
-        exit(0);
+    getaddrinfo("ukko135.hpc.cs.helsinki.fi", "echo", NULL, &result);
+    servaddr = (struct sockaddr_in) result->ai_addr;
+ 
+    sockfd=socket(AF_INET,SOCK_STREAM,0);
+ 
+    bzero(&servaddr,sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr=inet_addr(argv[1]);
+    servaddr.sin_port=htons(50001);
+ 
+    if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
+        perror("error connecting");
+        exit(1);
+    }
+    
+    while ((len = readLinee(STDIN_FILENO, sendline, 1000)) > 0) 
+        write(sockfd, sendline, len);
+        write(sockfd, "\n", 1);
+    return (EXIT_SUCCESS);
 }
-
-
-
